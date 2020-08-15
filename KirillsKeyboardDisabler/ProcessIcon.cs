@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Windows.Devices.Sensors;
 
@@ -18,6 +19,7 @@ namespace Tp412uaAccelerometerKeyboardDisabler
         private bool isKeyboardDisabled;
         private LidPositions lastPosition;
         private readonly NotifyIcon notifyIcon;
+        private readonly Accelerometer accelerometer;
 
         private readonly Func<bool, bool> BlockInput;
 
@@ -27,25 +29,37 @@ namespace Tp412uaAccelerometerKeyboardDisabler
             {
                 Text = "HRAshton's helper app that can disable keyboard",
                 ContextMenuStrip = new ContextMenus().Create(),
-                Visible = true
+                Visible = true,
             };
             notifyIcon.MouseClick += Ni_MouseClick;
+
+            accelerometer = Accelerometer.GetDefault();
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    ProcessState();
+                    await Task.Delay(500);
+                }
+            });
+
             BlockInput = blockInput;
 
-            var accelerometer = Accelerometer.GetDefault();
-            accelerometer.ReadingChanged += Accelerometer_ReadingChanged;
+            SetKeyboardState(isKeyboardDisabled);
         }
 
-        private void Accelerometer_ReadingChanged(Accelerometer sender, AccelerometerReadingChangedEventArgs args)
+        private void ProcessState()
         {
-            LidPositions position = (LidPositions)(uint)args.Reading.Properties[AccelerometerPropertyId];
+            LidPositions position = (LidPositions)(uint)accelerometer.GetCurrentReading()
+                .Properties[AccelerometerPropertyId];
             if (lastPosition == position)
                 return;
 
             lastPosition = position;
 
             bool shouldInputBeBlocked = lastPosition > LidPositions.Open180deg;
-            SetKeyboardState(shouldInputBeBlocked);
+            if (isKeyboardDisabled != shouldInputBeBlocked)
+                SetKeyboardState(shouldInputBeBlocked);
         }
 
         public void Dispose() => notifyIcon.Dispose();

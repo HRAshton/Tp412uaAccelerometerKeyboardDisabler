@@ -14,8 +14,8 @@ namespace Tp412uaAccelerometerKeyboardDisabler
 
             using (ProcessIcon pi = new ProcessIcon(BlockInput))
             {
-                Application.Run();
                 Application.ApplicationExit += (o, e) => BlockInput(false);
+                Application.Run();
             }
         }
 
